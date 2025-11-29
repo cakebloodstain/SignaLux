@@ -1,0 +1,10 @@
+PROJECT_NAME           = SignaLux
+OUTPUT_DIRECTORY       = @CMAKE_CURRENT_BINARY_DIR@
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+
+WARN_IF_UNDOCUMENTED   = NO
+EXTRACT_ALL            = YES
+RECURSIVE              = YES
+
+INPUT                  = @CMAKE_SOURCE_DIR@/src/signalux_core/include

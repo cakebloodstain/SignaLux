@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 project(signalux LANGUAGES CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # --- C++ 标准和 Conan ---
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

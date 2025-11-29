@@ -1,9 +1,20 @@
 [build-system]
-requires = ["scikit-build-core", "nanobind"]
-build-backend = "scikit_build_core.build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "signalux"
 version = "0.1.0"
 description = "SignaLux with Python API"
 requires-python = ">=3.8"
+
+# Hatch build configuration
+[tool.hatch.build]
+# Define a artifacts source to include our pre-built files from CMake.
+# The path is a glob pattern relative to the project root (the parent dir).
+artifacts = ["../build/python_staging/signalux"]
+
+[tool.hatch.build.targets.wheel]
+# This tells hatch to place the files from the 'artifacts' source
+# directly into the root of the wheel.
+packages = ["signalux"]

@@ -66,3 +66,8 @@ if(BUILD_TESTS)
     find_package(GTest REQUIRED)
     add_subdirectory(tests)
 endif()
+
+# --- Python Packaging Staging ---
+# This will trigger the install() commands in python/CMakeLists.txt
+# which will place the necessary files into a staging directory.
+add_subdirectory(python)

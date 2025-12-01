@@ -3,12 +3,32 @@ project(SignaLux LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# --- 全局选项 ---
+# ------------------------------------------------------------
+# 全局输出路径配置（必须放在 project() 后、add_subdirectory() 前）
+# ------------------------------------------------------------
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+
+if(CMAKE_CONFIGURATION_TYPES)
+    foreach(CONFIG ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER "${CONFIG}" CONFIG_UPPER)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_BINARY_DIR}/bin")
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_BINARY_DIR}/lib")
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_BINARY_DIR}/lib")
+    endforeach()
+endif()
+
+# ------------------------------------------------------------
+# 全局选项
+# ------------------------------------------------------------
 option(BUILD_PYTHON "Build Python bindings" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(BUILD_TESTS "Build the C++ tests" ON)
 
-# --- C++ 标准和 Conan ---
+# ------------------------------------------------------------
+# C++ 标准和 Conan
+# ------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -17,12 +37,17 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(spdlog REQUIRED)
 find_package(EnTT REQUIRED)
 
-# --- 添加核心库 (无条件) ---
+# ------------------------------------------------------------
+# 添加核心库 (无条件)
+# ------------------------------------------------------------
 add_subdirectory(src/core)
 
-# --- 添加 Python 绑定 (有条件) ---
+# ------------------------------------------------------------
+# Python 绑定 (有条件)
+# ------------------------------------------------------------
 if(BUILD_PYTHON)
     message(STATUS "Python binding build is enabled.")
+
     # 查找 Python
     find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development.Module)
 
@@ -31,6 +56,8 @@ if(BUILD_PYTHON)
       COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
       OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
     find_package(nanobind CONFIG REQUIRED)
+
+    # 强制默认构建类型
     if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
       set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
@@ -41,7 +68,9 @@ else()
     message(STATUS "Python binding build is disabled.")
 endif()
 
-# --- C++ 测试 ---
+# ------------------------------------------------------------
+# C++ 测试
+# ------------------------------------------------------------
 if(BUILD_TESTS)
     enable_testing()
     find_package(GTest REQUIRED)

@@ -1,0 +1,10 @@
+# Include C++ source files and headers
+recursive-include ../src *.cpp *.h
+recursive-include ../include *.h
+
+# Include top-level CMake and Conan files
+include ../CMakeLists.txt
+include ../conanfile.py
+
+# Include test files for completeness
+recursive-include ../tests *.cpp *.py

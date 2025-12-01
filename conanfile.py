@@ -1,5 +1,4 @@
 from conan import ConanFile
-from conan.tools.cmake import cmake_layout
 
 class SignaLuxConan(ConanFile):
     name = "signalux"
@@ -12,6 +11,3 @@ class SignaLuxConan(ConanFile):
         self.requires("spdlog/1.16.0")
         self.requires("fmt/12.1.0", override=True)
         self.requires("gtest/1.17.0")
-
-    def layout(self):
-        cmake_layout(self)

@@ -7,7 +7,7 @@ if(CORE_TEST_SRC_FILES)
 
     # 链接 GTest 和我们的核心库
     target_link_libraries(core_tests PRIVATE
-        signalux::signalux
+        SignaLux::signalux_core
         GTest::gtest_main
     )
 

@@ -9,8 +9,12 @@ dist/
 __pycache__/
 *.egg-info/
 python/dist/
-python/signalux/
-
+# 忽略 Python 包目录下的二进制产物
+python/signalux/*.pyi
+python/signalux/*.so
+python/signalux/*.pyd
+python/signalux/*.dll
+python/signalux/*.dylib
 # --- C++ / CMake ---
 CMakeCache.txt
 CMakeFiles/

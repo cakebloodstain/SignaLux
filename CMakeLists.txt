@@ -4,13 +4,16 @@ project(SignaLux LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ------------------------------------------------------------
-# 全局输出路径配置（必须放在 project() 后、add_subdirectory() 前）
+# 全局输出路径配置
 # ------------------------------------------------------------
+# 保持您原有的配置，用于控制构建的中间产物位置。
+# (注意：这不影响最终的安装路径，安装路径由 cmake --install --prefix 控制)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 if(CMAKE_CONFIGURATION_TYPES)
+    # ... (保持原有的多配置类型输出目录设置)
     foreach(CONFIG ${CMAKE_CONFIGURATION_TYPES})
         string(TOUPPER "${CONFIG}" CONFIG_UPPER)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_BINARY_DIR}/bin")
@@ -38,6 +41,21 @@ find_package(spdlog REQUIRED)
 find_package(EnTT REQUIRED)
 
 # ------------------------------------------------------------
+# ✨ 优化点 1: Manylinux ABI 兼容性配置（条件静态链接）
+# ------------------------------------------------------------
+# 目标：解决 Linux 环境下 GLIBCXX 版本冲突问题 (例如 Conda 环境)。
+# 仅在启用 Python 绑定，且目标系统不是 Windows 或 macOS 时应用。
+if(BUILD_PYTHON AND NOT WIN32 AND NOT APPLE)
+    message(STATUS "ABI FIX: Forcing static linking of libstdc++ and libgcc for Python/Manylinux compatibility.")
+    
+    # 将此标志添加到共享库和可执行文件的链接器标志中。
+    # 这会影响后续所有使用 add_library/add_executable 的目标。
+    # 这样，核心库 (core) 和扩展模块 (binding) 都会静态链接 C++ 运行时。
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+endif()
+
+# ------------------------------------------------------------
 # 添加核心库 (无条件)
 # ------------------------------------------------------------
 add_subdirectory(src/core)
@@ -57,7 +75,7 @@ if(BUILD_PYTHON)
       OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
     find_package(nanobind CONFIG REQUIRED)
 
-    # 强制默认构建类型
+    # 强制默认构建类型 (保持不变)
     if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
       set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")

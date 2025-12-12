@@ -2,7 +2,7 @@
 set -e
 
 # 该脚本自动化了 SignaLux 项目完整的构建-测试-打包-验证生命周期。
-# 它遵循 C++/Python 分离的构建哲学。
+# 它遵循 C++/Python 分离的构建哲学，并采用现代 Python 打包最佳实践。
 
 # --- 配置 ---
 BUILD_DIR="build"
@@ -10,7 +10,17 @@ BUILD_TYPE="Release"
 PROJECT_ROOT=$(dirname "$0")
 PYTHON_DIR="$PROJECT_ROOT/python"
 PACKAGE_NAME="signalux"
-PACKAGE_STAGING_DIR="$PYTHON_DIR/signalux"
+INSTALL_PREFIX="$PYTHON_DIR/$PACKAGE_NAME" # CMake 安装的最终目录
+
+# --- 前置检查 ---
+# 检查 patchelf 是否存在，Linux RPATH 修复依赖此工具
+if [[ "$OSTYPE" != "msys" ]] && [[ "$OSTYPE" != "win32" ]]; then
+    if ! command -v patchelf &> /dev/null; then
+        echo "⚠️ 警告: 未找到 patchelf 工具。"
+        echo "Linux/macOS 环境下，核心库 (libsignalux_core.so) 运行时可能找不到！"
+        echo "请安装：sudo apt-get install patchelf"
+    fi
+fi
 
 # --- Main Logic ---
 cd "$PROJECT_ROOT"
@@ -21,14 +31,13 @@ mkdir -p "$BUILD_DIR"
 conan install . --build=missing -s build_type="$BUILD_TYPE" -of="$BUILD_DIR"
 
 echo ">>> [2/7] 配置并构建纯 C++ 核心库..."
-# 使用 Conan 生成的工具链来配置 CMake
 CMAKE_TOOLCHAIN_FILE="$BUILD_DIR/conan_toolchain.cmake"
 cmake -B "$BUILD_DIR" -S . \
     -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DBUILD_TESTS=ON
 
-# 只构建 C++ 核心库和测试，不构建 Python 绑定
+# 构建 C++ 核心库和测试
 cmake --build "$BUILD_DIR" --target signalux_core core_tests
 
 echo ">>> [3/7] 运行 C++ 测试..."
@@ -36,61 +45,41 @@ cd "$BUILD_DIR"
 ctest --output-on-failure
 cd ..
 
-echo ">>> [4/7] 构建 Python 库pyd/so..."
+echo ">>> [4/7] 构建 Python 扩展模块 (so/pyd) 及类型存根 (pyi)..."
 cmake --build "$BUILD_DIR" --target signalux_pyext
 cmake --build "$BUILD_DIR" --target signalux_pyext_stub
 
-echo ">>> [5/7] 准备 Python wheel 包内容..."
-# 执行 CMake install 步骤以生成 .pyi 文件和其他必要的文件
-cmake --install "$BUILD_DIR" --component python
+echo ">>> [5/7] 规范安装到 Python 包目录并修复依赖链接..."
 
-# 创建 Python 包目录
-rm -rf "$PACKAGE_STAGING_DIR"
-mkdir -p "$PACKAGE_STAGING_DIR"
+# 1. 确保目标目录存在 (不删除 __init__.py 等源码文件)
+mkdir -p "$INSTALL_PREFIX"
 
-# 复制编译好的扩展模块到 Python 包目录
-# 查找并复制 .so 或 .dll 文件
-EXT_FILE=""
-CORE_LIB_FILE=""
-PYI_FILE=""
+# 2. 清理旧的二进制产物 (防止不同 Python 版本残留)
+echo "正在清理旧的二进制产物..."
+find "$INSTALL_PREFIX" -type f \( -name "signalux_pyext*.so*" -o -name "signalux_pyext*.pyd" -o -name "libsignalux_core*.so*" -o -name "signalux_core*.dll" \) -delete
 
-# 查找扩展模块文件
-if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-    # Windows 系统查找 .pyd 文件
-    EXT_FILE=$(find "$BUILD_DIR" -name "signalux_pyext.pyd" | head -n 1)
-    CORE_LIB_FILE=$(find "$BUILD_DIR" -name "signalux_core.dll" | head -n 1)
-    PYI_FILE=$(find "$BUILD_DIR" -name "signalux_pyext.pyi" | head -n 1)
-else
-    # Unix/Linux 系统查找 .so 文件
-    EXT_FILE=$(find "$BUILD_DIR/lib" -name "signalux_pyext*.so*" | head -n 1)
-    CORE_LIB_FILE=$(find "$BUILD_DIR/lib" -name "libsignalux_core.so*" | head -n 1)
-    PYI_FILE=$(find "$BUILD_DIR" -name "signalux_pyext.pyi" | head -n 1)
+# 3. **核心步骤**：使用 CMake install 将所有构建产物安装到目标目录
+# 依赖于 CMakeLists.txt 中对 signalux_core, signalux_pyext, pyi 的 install(COMPONENT python) 配置
+echo "使用 CMake 安装新文件到 $INSTALL_PREFIX ..."
+cmake --install "$BUILD_DIR" \
+      --component python \
+      --prefix "$INSTALL_PREFIX" \
+      --strip
+
+# 4. 确保 py.typed 存在 (标记包支持类型提示)
+touch "$INSTALL_PREFIX/py.typed"
+
+# 5. **Linux/macOS 关键修复**：设置 RPATH ($ORIGIN) 确保运行时能找到 libsignalux_core.so
+if [[ "$OSTYPE" != "msys" ]] && [[ "$OSTYPE" != "win32" ]]; then
+    if command -v patchelf &> /dev/null; then
+        echo "正在设置 RPATH (\$ORIGIN) 修复依赖链接..."
+        # 确保 patchelf 命令作用于正确的文件，并且在文件安装到 $INSTALL_PREFIX 后
+        find "$INSTALL_PREFIX" -name "*.so" -exec patchelf --set-rpath '$ORIGIN' --force-rpath {} \;
+    else
+        echo "致命错误：未找到 patchelf。RPATH 修复失败！"
+        exit 1 # 强制退出，因为没有 patchelf 就无法解决依赖问题
+    fi
 fi
-
-if [ -n "$EXT_FILE" ] && [ -f "$EXT_FILE" ]; then
-    cp "$EXT_FILE" "$PACKAGE_STAGING_DIR/"
-    echo "已复制扩展模块: $EXT_FILE"
-else
-    echo "错误：找不到编译好的扩展模块文件！"
-    exit 1
-fi
-
-if [ -n "$CORE_LIB_FILE" ] && [ -f "$CORE_LIB_FILE" ]; then
-    cp "$CORE_LIB_FILE" "$PACKAGE_STAGING_DIR/"
-    echo "已复制核心库: $CORE_LIB_FILE"
-else
-    echo "警告：找不到核心库文件，将继续打包"
-fi
-
-if [ -n "$PYI_FILE" ] && [ -f "$PYI_FILE" ]; then
-    cp "$PYI_FILE" "$PACKAGE_STAGING_DIR/"
-    echo "已复制类型提示文件: $PYI_FILE"
-else
-    echo "警告：找不到类型提示文件，将继续打包"
-fi
-
-# 创建 py.typed 文件
-touch "$PACKAGE_STAGING_DIR/py.typed"
 
 echo ">>> [6/7] 使用 Hatch 构建 Python wheel 包..."
 # 安装 hatch

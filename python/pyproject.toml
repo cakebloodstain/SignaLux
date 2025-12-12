@@ -1,6 +1,6 @@
 [build-system]
-requires = ["scikit-build-core", "nanobind"]
-build-backend = "scikit_build_core.build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "signalux"
@@ -8,9 +8,5 @@ version = "0.1.0"
 description = "SignaLux with Python API"
 requires-python = ">=3.8"
 
-[tool.scikit-build]
-# 将 CMake 源目录指向项目的根目录
-cmake.source-dir = ".."
-
-# 将安装目录指向 Python 包内
-wheel.install-dir = "signalux"
+[tool.hatch.build.targets.wheel]
+packages = ["signalux"]

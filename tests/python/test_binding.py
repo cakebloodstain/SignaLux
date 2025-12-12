@@ -8,10 +8,10 @@ def test_greeting_binding():
     """
     # Import the module inside the test function.
     # This ensures it's imported in the context of the test runner.
-    import _signalux
+    import signalux
 
     # Call the C++ function
-    message = _signalux.get_greeting("Pytest")
+    message = signalux.get_greeting("Pytest")
 
     # Assert the expected outcome
     assert message == "Hello, Pytest!"

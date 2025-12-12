@@ -38,6 +38,7 @@ cd ..
 
 echo ">>> [4/7] 构建 Python 库pyd/so..."
 cmake --build "$BUILD_DIR" --target signalux_pyext
+cmake --build "$BUILD_DIR" --target signalux_pyext_stub
 
 echo ">>> [5/7] 准备 Python wheel 包内容..."
 # 执行 CMake install 步骤以生成 .pyi 文件和其他必要的文件

@@ -16,7 +16,7 @@ export CIBW_BUILD="cp310-* cp311-* cp312-*"
 # 3. 在构建前，告诉 cibuildwheel 在容器内安装构建依赖
 export CIBW_BEFORE_BUILD="pip install conan cmake"
 # 4. 指定最终输出目录
-export CIBW_WHEEL_DIR="python/dist"
+export CIBW_WHEEL_DIR="../python/dist"
 # 5. 可选：跳过 macOS/Windows (因为这是一个 Linux CI 脚本)
 export CIBW_SKIP="*-macosx_* *-win_*"
 

@@ -12,6 +12,5 @@ def test_greeting_binding():
 
     # Call the C++ function
     message = signalux.get_greeting("Pytest")
-
     # Assert the expected outcome
     assert message == "Hello, Pytest!"

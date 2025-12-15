@@ -10,3 +10,13 @@ requires-python = ">=3.8"
 
 [tool.hatch.build.targets.wheel]
 packages = ["signalux"]
+# 明确指定这是一个平台相关的构建
+pure-python = false
+
+
+# 添加自定义构建钩子来启用平台特定标签
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true

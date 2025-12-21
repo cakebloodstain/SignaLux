@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
-project(SignaLux LANGUAGES CXX)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+project(SignaLux LANGUAGES CXX)
 
 # ------------------------------------------------------------
 # 全局输出路径配置
@@ -92,5 +91,5 @@ endif()
 if(BUILD_TESTS)
     enable_testing()
     find_package(GTest REQUIRED)
-    add_subdirectory(tests)
+    add_subdirectory(tests/signalux)
 endif()

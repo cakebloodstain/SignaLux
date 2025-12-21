@@ -1,5 +1,5 @@
 # --- C++ 核心库测试 ---
-file(GLOB_RECURSE CORE_TEST_SRC_FILES "core/*.cpp")
+file(GLOB_RECURSE CORE_TEST_SRC_FILES "./*.cpp")
 
 if(CORE_TEST_SRC_FILES)
     # 创建测试可执行文件

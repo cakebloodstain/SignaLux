@@ -50,7 +50,7 @@ if(BUILD_PYTHON AND NOT WIN32 AND NOT APPLE)
     
     # 将此标志添加到共享库和可执行文件的链接器标志中。
     # 这会影响后续所有使用 add_library/add_executable 的目标。
-    # 这样，核心库 (core) 和扩展模块 (binding) 都会静态链接 C++ 运行时。
+    # 这样，核心库 (sign) 和扩展模块 (binding) 都会静态链接 C++ 运行时。
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
@@ -58,7 +58,7 @@ endif()
 # ------------------------------------------------------------
 # 添加核心库 (无条件)
 # ------------------------------------------------------------
-add_subdirectory(src/core)
+add_subdirectory(src/signalux)
 
 # ------------------------------------------------------------
 # Python 绑定 (有条件)

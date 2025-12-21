@@ -47,6 +47,24 @@ def clean_dir(path: Path):
     path.mkdir(parents=True, exist_ok=True)
 
 
+def get_run_kwargs():
+    """
+    配置 invoke.run 的通用参数：
+    1. pty=True: 在 Unix 上模拟终端，保留彩色输出。
+    2. env: 强制工具开启颜色。
+    """
+    kwargs = {"pty": not is_windows(), "echo": True}
+
+    # 强制工具输出颜色
+    custom_env = os.environ.copy()
+    custom_env["CLICOLOR_FORCE"] = "1"  # 多数工具通用
+    custom_env["CONAN_COLOR_DISPLAY"] = "1"  # Conan
+    custom_env["PY_COLORS"] = "1"  # Pytest/Python
+
+    kwargs["env"] = custom_env
+    return kwargs
+
+
 # --- 任务定义 ---
 
 
@@ -72,7 +90,7 @@ def check_env(c):
     result = c.run(f'"{PYTHON}" -m hatch --version', warn=True, hide=True)
     if result.failed:
         print("⚠️ 未检测到 Hatch，正在安装...")
-        c.run(f'"{PYTHON}" -m pip install hatch')
+        c.run(f'"{PYTHON}" -m pip install hatch', **get_run_kwargs())
 
     print("✅ 环境检查通过")
 
@@ -111,7 +129,7 @@ def install_deps(c, build_type="Release"):
         f"-s build_type={build_type} "
         f"-of={BUILD_DIR}"
     )
-    c.run(cmd)
+    c.run(cmd, **get_run_kwargs())
 
 
 @task(pre=[check_env])
@@ -146,13 +164,13 @@ def build_cpp(c, build_type="Release"):
 
     # 首次运行如果失败，尝试清理缓存重试 (虽然加上面参数后应该能一次成功)
     try:
-        c.run(config_cmd)
+        c.run(config_cmd, **get_run_kwargs())
     except Exception:
         print("⚠️ 第一次配置失败，尝试清理缓存后重试...")
         cache_file = BUILD_DIR / "CMakeCache.txt"
         if cache_file.exists():
             cache_file.unlink()
-        c.run(config_cmd)
+        c.run(config_cmd, **get_run_kwargs())
 
     # 2. CMake Build ... (保持不变)
     targets = ["signalux_core", "signalux_pyext", "signalux_pyext_stub", "core_tests"]
@@ -164,7 +182,7 @@ def build_cpp(c, build_type="Release"):
     else:
         build_cmd += f" -j {os.cpu_count()}"
 
-    c.run(build_cmd)
+    c.run(build_cmd, **get_run_kwargs())
 
 
 @task
@@ -174,7 +192,7 @@ def test_cpp(c, build_type="Release"):
     with c.cd(BUILD_DIR):
         # --output-on-failure: 测试失败时输出日志
         # -C: 指定配置 (主要针对 Windows MSVC)
-        c.run(f"ctest --output-on-failure -C {build_type}")
+        c.run(f"ctest --output-on-failure -C {build_type}", **get_run_kwargs())
 
 
 @task
@@ -198,7 +216,7 @@ def install_artifacts(c, build_type="Release"):
         f"--prefix {INSTALL_PREFIX} "
         "--strip"
     )
-    c.run(cmd)
+    c.run(cmd, **get_run_kwargs())
 
     # 3. 创建 py.typed (PEP 561)
     (INSTALL_PREFIX / "py.typed").touch()
@@ -209,7 +227,7 @@ def install_artifacts(c, build_type="Release"):
         so_files = list(INSTALL_PREFIX.glob("*.so"))
         for so in so_files:
             # $ORIGIN 代表 .so 文件所在的当前路径
-            c.run(f"patchelf --set-rpath '$ORIGIN' {so}")
+            c.run(f"patchelf --set-rpath '$ORIGIN' {so}", **get_run_kwargs())
 
 
 @task
@@ -223,8 +241,8 @@ def build_wheel(c):
 
     with c.cd(PYTHON_DIR):
         # 使用当前 Python 环境执行 hatch
-        c.run(f'"{PYTHON}" -m hatch env prune', warn=True)
-        c.run(f'"{PYTHON}" -m hatch build')
+        c.run(f'"{PYTHON}" -m hatch env prune', warn=True, **get_run_kwargs())
+        c.run(f'"{PYTHON}" -m hatch build', **get_run_kwargs())
 
 
 @task
@@ -245,7 +263,7 @@ def install_wheel(c):
     latest_wheel = sorted(wheels, key=lambda f: f.stat().st_mtime, reverse=True)[0]
     print(f"安装: {latest_wheel.name}")
 
-    c.run(f'"{PYTHON}" -m pip install {latest_wheel}')
+    c.run(f'"{PYTHON}" -m pip install {latest_wheel}', **get_run_kwargs())
 
 
 @task
@@ -262,7 +280,7 @@ def test_python(c):
     # 使用当前 Python 运行 pytest
     # -v: 详细输出
     # -s: 允许 stdout 输出 (调试打印)
-    c.run(f'"{PYTHON}" -m pytest {test_dir} -v -s')
+    c.run(f'"{PYTHON}" -m pytest {test_dir} -v -s', **get_run_kwargs())
 
 
 @task(default=True)
